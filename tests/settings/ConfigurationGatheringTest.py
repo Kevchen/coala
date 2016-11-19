@@ -20,8 +20,11 @@ class ConfigurationGatheringTest(unittest.TestCase):
 
     def setUp(self):
         self.log_printer = LogPrinter(NullPrinter())
+        self.old_environ = os.environ
+        os.environ = {}
 
     def tearDown(self):
+        os.environ = self.old_environ
         close_objects(self.log_printer)
 
     def test_gather_configuration(self):
@@ -276,3 +279,31 @@ class ConfigurationGatheringTest(unittest.TestCase):
                     ['--no-config', '--find-config'],
                     self.log_printer)
                 self.assertEqual(cm.exception.code, 2)
+
+    def test_editor_from_env(self):
+        sections, local_bears, global_bears, targets = gather_configuration(
+            lambda *args: true,
+            self.log_printer,
+            arg_list=[])
+        self.assertNotIn("editor", sections["default"])
+
+        os.environ["EDITOR"] = "vim"
+        sections, local_bears, global_bears, targets = gather_configuration(
+            lambda *args: true,
+            self.log_printer,
+            arg_list=[])
+        self.assertEqual(sections["default"]["editor"].value, "vim")
+
+        current_dir = os.path.abspath(os.path.dirname(__file__))
+        child_dir = os.path.join(current_dir, "editor_test_files")
+        with change_directory(child_dir):
+            os.environ["EDITOR"] = "vim"
+            sections, local_bears, global_bears, targets = gather_configuration(
+                lambda *args: true,
+                self.log_printer,
+                arg_list=[])
+            # ``$EDITOR`` has preference over whatever is set in setttings
+            # (which can be from a ``.coafile`` or ``.coarc``) because when
+            # the user runs ``EDITOR=vim ./coala``, it should respect that.
+            # Also it seems only natural to override emacs with vim :P
+            self.assertEqual(sections["default"]["editor"].value, "vim")

@@ -142,6 +142,10 @@ def load_configuration(arg_list, log_printer, arg_parser=None):
         cli_sections["default"].add_or_create_setting(
             Setting("config", re.escape(find_user_config(os.getcwd()))))
 
+    if "EDITOR" in os.environ:
+        cli_sections["default"].add_or_create_setting(
+            Setting("editor", os.environ["EDITOR"]))
+
     targets = []
     # We don't want to store targets argument back to file, thus remove it
     for item in list(cli_sections["default"].contents.pop("targets", "")):
